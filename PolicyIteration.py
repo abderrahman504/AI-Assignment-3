@@ -1,6 +1,6 @@
-from Gauss_Jordan import Gauss_Jordan
 
 
+gamma: float = 0.99
 LEFT = 0
 DOWN = 1
 RIGHT = 2
@@ -53,7 +53,18 @@ class State:
 			result.append(ActionResult(0.1, leftLoc))
 			result.append(ActionResult(0.1, rightLoc))
 		return result
-		
+
+	def get_state_utility(self, action: int, board: list, statesUtils: list) -> float:
+		if len(self.actions) == 0: return 0
+		utility: float = 0
+		i: ActionResult = None
+		results: list = self.actions[action]
+		for i in results: #Checking each possible result of an action
+			nextLoc: tuple = i.resultLoc
+			nextStatePrevUtil = statesUtils[nextLoc[0] + 3*nextLoc[1]]
+			utility += i.chance * (board[nextLoc[0]][nextLoc[1]].reward + gamma*nextStatePrevUtil)
+		return utility
+
 
 class ActionResult:
 	resultLoc: tuple
@@ -65,10 +76,7 @@ class ActionResult:
 
 
 
-
-
 def policyIteration(r: int) -> tuple:
-	gamma: float = 0.99
 	statesGrid: list = []
 
 	for x in range(3):
@@ -82,40 +90,15 @@ def policyIteration(r: int) -> tuple:
 	
 	statesGrid[0][0].reward = r
 	statesGrid[2][0].reward = 10
-	#Solve the system of equations and store result in previousIterationUtilitiesp
-	systemA = [
-		[1         , 0          , 0         , 0          , 0         , 0          , 0          , 0          , 0],#1
-		[0         , 1-0.1*gamma, -0.8*gamma, 0          , -0.1*gamma, 0          , 0          , 0          , 0],#2
-		[0         , 0          , 1         , 0          , 0         , 0          , 0          , 0          , 0],#3
-		[-0.8*gamma, 0          , 0         , 1-0.1*gamma, -0.1*gamma, 0          , 0          , 0          , 0],#4
-		[0         , -0.8*gamma , 0         , -0.1*gamma , 1         , -0.1*gamma , 0          , 0          , 0],#5
-		[0         , 0          , -0.8*gamma, 0          , -0.1*gamma, 1-0.1*gamma, 0          , 0          , 0],#6
-		[0         , 0          , 0         , -0.8*gamma , 0         , 0          , 1-0.1*gamma, -0.1*gamma , 0],#7
-		[0         , 0          , 0         , 0          , -0.8*gamma, 0          , -0.1*gamma , 1          , -0.1*gamma],#8
-		[0         , 0          , 0         , 0          , 0         , -0.8*gamma , 0          , -0.1*gamma , 1-0.1*gamma]#9
-	];
-	systemB = [
-		0,
-		7.8,
-		0,
-		0.8*r-0.2,
-		-1,
-		7.8,
-		-1,
-		-1,
-		-1];
-	previousIterationUtilities = Gauss_Jordan(systemA, systemB, 9, 10)
 	previousIterationPolicies: list = [
 		None, RIGHT, None,
 		UP, UP, UP,
 		UP, UP, UP];
+	previousIterationUtilities = converge_policy_utilities(statesGrid, previousIterationPolicies)
 	converged: bool = False
 	while not converged: #Policy iteration loop
-		newPolicies: list = []
-		newUtilities: list = []
-		for i in range(9):
-			newPolicies.append(None)
-			newUtilities.append(None)
+		newPolicies: list = [None] * 9
+		newUtilities: list = [None] * 9
 		
 		for x in range(3):
 			for y in range(3): #States loop
@@ -127,14 +110,7 @@ def policyIteration(r: int) -> tuple:
 				
 				utilities: dict = {}
 				for action in state.actions: #Going through each action in a state
-					results: list = state.actions[action]
-					utility: float = 0
-					i: ActionResult = None
-					for i in results: #Checking each possible result of an action
-						nextLoc: tuple = i.resultLoc
-						nextStatePrevUtil = previousIterationUtilities[nextLoc[0] + 3*nextLoc[1]]
-						utility += i.chance * (statesGrid[nextLoc[0]][nextLoc[1]].reward + gamma*nextStatePrevUtil)
-					utilities[action] = utility
+					utilities[action] = state.get_state_utility(action, statesGrid, previousIterationUtilities)
 				newPolicies[x + 3*y] = max(utilities, key=utilities.get)
 				newUtilities[x + 3*y] = max(utilities.values())
 		
@@ -146,61 +122,23 @@ def policyIteration(r: int) -> tuple:
 				converged = False
 				break
 		previousIterationPolicies = newPolicies
-		previousIterationUtilities = newUtilities
+		if not converged:
+			previousIterationUtilities = converge_policy_utilities(statesGrid, previousIterationPolicies, newUtilities)
+		else: previousIterationUtilities = newUtilities
 	
 	return previousIterationPolicies, previousIterationUtilities
 
 
-
-def print_policy(policies: list, utilities: list) -> None:
-	print("Optimal Policy:")
-	for y in range(3):
-		row: list = []
+def converge_policy_utilities(board: list, policies: list, initialUtils: list = [0]*9, converganceThreshold: float = 0.001) -> list:
+	currentError = 1
+	while currentError > converganceThreshold:
+		nextUtils: list = [0] * 9
 		for x in range(3):
-			policy: int = policies[x + 3*y]
-			util: float = utilities[x + 3*y]
-			if policy == LEFT:
-				string = "Left:"
-			elif policy == RIGHT:
-				string = "Right:"
-			elif policy == UP:
-				string = "Up:"
-			elif policy == DOWN:
-				string = "Down:"
-			else:
-				string = "None:"
-			string = string + str(util)
-			row.append(string)
-		print(row)
+			for y in range(3):#States loop
+				state: State = board[x][y]
+				action: int  = policies[x + 3*y]
+				nextUtils[x + 3*y] = state.get_state_utility(action, board, initialUtils)
+		currentError = nextUtils[0] - initialUtils[0]
+		initialUtils = nextUtils
+	return initialUtils
 
-
-testR = 100
-print("r = " + str(testR))
-optimalPolicies, optimalUtilities = policyIteration(testR)
-print_policy(optimalPolicies, optimalUtilities)
-print()
-
-
-testR = 3
-print("r = " + str(testR))
-optimalPolicies, optimalUtilities = policyIteration(testR)
-print_policy(optimalPolicies, optimalUtilities)
-print()
-
-
-testR = 0
-print("r = " + str(testR))
-optimalPolicies, optimalUtilities = policyIteration(testR)
-print_policy(optimalPolicies, optimalUtilities)
-print()
-
-
-testR = -3
-print("r = " + str(testR))
-optimalPolicies, optimalUtilities = policyIteration(testR)
-print_policy(optimalPolicies, optimalUtilities)
-print()
-		
-
-
-		
