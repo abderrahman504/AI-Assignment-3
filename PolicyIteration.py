@@ -138,7 +138,12 @@ def converge_policy_utilities(board: list, policies: list, initialUtils: list = 
 				state: State = board[x][y]
 				action: int  = policies[x + 3*y]
 				nextUtils[x + 3*y] = state.get_state_utility(action, board, initialUtils)
-		currentError = abs(max(nextUtils) - max(initialUtils))
+		maxNew: float  = max(nextUtils)
+		maxOld: float = max(initialUtils)
+		maxNew = maxNew if nextUtils.count(maxNew) else maxNew*-1
+		maxOld = maxOld if nextUtils.count(maxOld) else maxOld*-1
+		
+		currentError = abs(maxNew - maxOld)
 		initialUtils = nextUtils
 	return initialUtils
 
