@@ -30,27 +30,3 @@ optimalPolicies, optimalUtilities = policyIteration(testR)
 print_policy(optimalPolicies, optimalUtilities)
 print()
 
-
-testR = 7
-print("r = " + str(testR))
-optimalPolicies, optimalUtilities = policyIteration(testR)
-print_policy(optimalPolicies, optimalUtilities)
-print()
-
-
-testR = 6.5
-print("r = " + str(testR))
-optimalPolicies, optimalUtilities = policyIteration(testR)
-print_policy(optimalPolicies, optimalUtilities)
-print()
-
-
-testR = 6.25
-print("r = " + str(testR))
-optimalPolicies, optimalUtilities = policyIteration(testR)
-print_policy(optimalPolicies, optimalUtilities)
-print()
-		
-
-
-

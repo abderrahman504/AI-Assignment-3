@@ -91,9 +91,9 @@ def policyIteration(r: int) -> tuple:
 	statesGrid[0][0].reward = r
 	statesGrid[2][0].reward = 10
 	previousIterationPolicies: list = [
-		None, RIGHT, None,
-		UP, UP, UP,
-		UP, UP, UP];
+		None, LEFT, None,
+		UP, LEFT, DOWN,
+		UP, LEFT, LEFT];
 	previousIterationUtilities = converge_policy_utilities(statesGrid, previousIterationPolicies)
 	converged: bool = False
 	while not converged: #Policy iteration loop
@@ -138,7 +138,7 @@ def converge_policy_utilities(board: list, policies: list, initialUtils: list = 
 				state: State = board[x][y]
 				action: int  = policies[x + 3*y]
 				nextUtils[x + 3*y] = state.get_state_utility(action, board, initialUtils)
-		currentError = nextUtils[0] - initialUtils[0]
+		currentError = abs(max(nextUtils) - max(initialUtils))
 		initialUtils = nextUtils
 	return initialUtils
 
